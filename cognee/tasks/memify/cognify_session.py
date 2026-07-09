@@ -9,7 +9,7 @@ from cognee.shared.logging_utils import get_logger
 logger = get_logger("cognify_session")
 
 
-async def cognify_session(data: str, dataset_id: Optional[UUID | str] = None) -> None:
+async def cognify_session(data: str, dataset_id: Optional[UUID | str] = None, user=None) -> None:
     """
     Process and cognify session data into the knowledge graph.
 
@@ -32,9 +32,9 @@ async def cognify_session(data: str, dataset_id: Optional[UUID | str] = None) ->
 
         logger.info("Processing session data for cognification")
 
-        await cognee.add(data, dataset_id=dataset_id, node_set=["user_sessions_from_cache"])
+        await cognee.add(data, dataset_id=dataset_id, node_set=["user_sessions_from_cache"], user=user)
         logger.debug("Session data added to cognee with node_set: user_sessions")
-        await cognee.cognify(datasets=[dataset_id])
+        await cognee.cognify(datasets=[dataset_id], user=user)
         logger.info("Session data successfully cognified")
 
     except CogneeValidationError:

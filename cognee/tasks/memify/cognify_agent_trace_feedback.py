@@ -13,6 +13,7 @@ async def cognify_agent_trace_feedback(
     data: str,
     dataset_id: Optional[UUID | str] = None,
     node_set_name: str = "agent_trace_feedbacks",
+    user=None,
 ) -> None:
     """
     Process and cognify agent trace session text into the knowledge graph.
@@ -40,12 +41,12 @@ async def cognify_agent_trace_feedback(
 
         logger.info("Processing agent trace content for cognification")
 
-        await cognee.add(data, dataset_id=dataset_id, node_set=[node_set_name])
+        await cognee.add(data, dataset_id=dataset_id, node_set=[node_set_name], user=user)
         logger.debug(
             "Agent trace content added to cognee with node_set: %s",
             node_set_name,
         )
-        await cognee.cognify(datasets=[dataset_id])
+        await cognee.cognify(datasets=[dataset_id], user=user)
         logger.info("Agent trace content successfully cognified")
 
     except CogneeValidationError:
