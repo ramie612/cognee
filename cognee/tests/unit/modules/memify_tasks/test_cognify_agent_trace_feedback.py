@@ -20,8 +20,9 @@ async def test_cognify_agent_trace_feedback_success():
         trace_content,
         dataset_id="123",
         node_set=["agent_trace_feedbacks"],
+        user=None,
     )
-    mock_cognify.assert_called_once_with(datasets=["123"])
+    mock_cognify.assert_called_once_with(datasets=["123"], user=None)
 
 
 @pytest.mark.asyncio
@@ -42,6 +43,7 @@ async def test_cognify_agent_trace_feedback_custom_node_set_name():
         trace_content,
         dataset_id="123",
         node_set=["custom_trace_feedbacks"],
+        user=None,
     )
 
 

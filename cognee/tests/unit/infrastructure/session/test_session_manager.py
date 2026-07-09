@@ -627,6 +627,7 @@ class TestSessionManager:
             used_graph_element_ids=None,
             memify_metadata=None,
             used_session_context_ids=None,
+            node_set=None,
         )
         mock_cache.get_qa_entries_by_ids.assert_awaited_once_with("u1", "s1", ["q1"])
         session_vector_mocks["delete_qa"].assert_awaited_once_with(qa_id="q1")

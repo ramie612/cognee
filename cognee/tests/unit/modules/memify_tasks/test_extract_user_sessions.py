@@ -66,16 +66,59 @@ async def test_extract_user_sessions_success(mock_user, mock_qa_data):
             sessions.append(session)
 
         assert len(sessions) == 1
-        assert "Session ID: test_session" in sessions[0]
-        assert "Question: What is cognee?" in sessions[0]
-        assert "Answer: Cognee is a knowledge graph solution" in sessions[0]
-        assert "Question: How does it work?" in sessions[0]
-        assert "Answer: It processes data and creates graphs" in sessions[0]
+        bundle = sessions[0]
+        assert bundle["session_id"] == "test_session"
+        notes = bundle["notes"]
+        assert len(notes) == 2
+        assert notes[0]["text"] == (
+            "Question: What is cognee?\n\nAnswer: Cognee is a knowledge graph solution"
+        )
+        assert notes[1]["text"] == (
+            "Question: How does it work?\n\nAnswer: It processes data and creates graphs"
+        )
+        # untagged entries fall back to the default session node set
+        assert notes[0]["node_set"] == ["user_sessions_from_cache"]
+        assert notes[1]["node_set"] == ["user_sessions_from_cache"]
         mock_session_manager.get_session.assert_called_once_with(
             user_id="test-user-123",
             session_id="test_session",
             formatted=False,
         )
+
+
+@pytest.mark.asyncio
+async def test_extract_user_sessions_preserves_per_note_node_set(mock_user):
+    """Each entry's node_set rides onto its note, unioned with the default set and sorted."""
+    tagged = [
+        SessionQAEntry(
+            question="q1", context="", answer="a1", time="2025-01-01T12:00:00",
+            node_set=["status", "client"],
+        ),
+        SessionQAEntry(
+            question="q2", context="", answer="a2", time="2025-01-01T12:05:00",
+            node_set=["decision"],
+        ),
+    ]
+    mock_session_manager = _make_mock_session_manager(tagged)
+
+    with (
+        patch.object(extract_user_sessions_module, "session_user") as mock_session_user,
+        patch.object(
+            extract_user_sessions_module,
+            "get_session_manager",
+            return_value=mock_session_manager,
+        ),
+    ):
+        mock_session_user.get.return_value = mock_user
+
+        sessions = []
+        async for session in extract_user_sessions([{}], session_ids=["s"]):
+            sessions.append(session)
+
+    notes = sessions[0]["notes"]
+    # sorted() over the union with the default set
+    assert notes[0]["node_set"] == ["client", "status", "user_sessions_from_cache"]
+    assert notes[1]["node_set"] == ["decision", "user_sessions_from_cache"]
 
 
 @pytest.mark.asyncio
