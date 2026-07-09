@@ -26,7 +26,13 @@ async def extract_user_sessions(
         session_ids: Optional list of specific session IDs to extract.
 
     Yields:
-        String containing session ID and all Q&A pairs formatted.
+        One dict bundle per session:
+            {"session_id": str,
+             "notes": [{"text": "Question: ...\n\nAnswer: ...",
+                        "node_set": [<tag>, ..., "user_sessions_from_cache"]}, ...]}
+        Each note carries its own NodeSet tags (the entry's node_set unioned with the
+        default "user_sessions_from_cache" set) so cognify_session can materialize
+        per-note graph tags in a single cognify batch.
 
     Raises:
         CogneeSystemError: If SessionManager is unavailable or extraction fails.
@@ -60,12 +66,22 @@ async def extract_user_sessions(
                         logger.info(
                             f"Extracted session {session_id} via SessionManager with {len(qa_data)} Q&A pairs"
                         )
-                        session_string = f"Session ID: {session_id}\n\n"
-                        for qa_pair in qa_data:
-                            question = qa_pair.question
-                            answer = qa_pair.answer
-                            session_string += f"Question: {question}\n\nAnswer: {answer}\n\n"
-                        yield session_string
+                        # Yield one bundle per session, preserving each note's own
+                        # NodeSet tags (unioned with the default session set) so the
+                        # per-note tags survive into the graph instead of being lost
+                        # in a single concatenated, single-tagged document.
+                        yield {
+                            "session_id": session_id,
+                            "notes": [
+                                {
+                                    "text": f"Question: {qa_pair.question}\n\nAnswer: {qa_pair.answer}",
+                                    "node_set": sorted(
+                                        {*(qa_pair.node_set or []), "user_sessions_from_cache"}
+                                    ),
+                                }
+                                for qa_pair in qa_data
+                            ],
+                        }
                 except Exception as e:
                     logger.warning(f"Failed to extract session {session_id}: {str(e)}")
                     continue
