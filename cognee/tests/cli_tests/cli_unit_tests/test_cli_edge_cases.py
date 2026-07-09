@@ -289,6 +289,7 @@ class TestCognifyCommandEdgeCases:
             chunker=TextChunker,
             run_in_background=False,
             chunks_per_batch=None,
+            dry_run=False,
         )
 
     @patch(_RESOLVE_USER_PATCH, new_callable=lambda: AsyncMock(return_value=_mock_user()))
@@ -325,6 +326,7 @@ class TestCognifyCommandEdgeCases:
             chunker=TextChunker,
             run_in_background=False,
             chunks_per_batch=None,
+            dry_run=False,
         )
 
     @patch("cognee.cli.commands.cognify_command.asyncio.run")
@@ -406,6 +408,7 @@ class TestCognifyCommandEdgeCases:
             chunker=TextChunker,
             run_in_background=False,
             chunks_per_batch=None,
+            dry_run=False,
         )
 
 

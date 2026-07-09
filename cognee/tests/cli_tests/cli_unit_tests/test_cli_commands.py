@@ -265,6 +265,7 @@ class TestCognifyCommand:
             chunker=TextChunker,
             run_in_background=False,
             chunks_per_batch=None,
+            dry_run=False,
         )
 
     @patch("cognee.cli.commands.cognify_command.asyncio.run")
