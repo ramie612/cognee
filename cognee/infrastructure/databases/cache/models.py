@@ -31,6 +31,8 @@ class SessionQAEntry(BaseModel):
         used_graph_element_ids: Optional dict with only "node_ids" and "edge_ids" (lists of str).
         memify_metadata: Optional dict with memify status keys (e.g. "feedback_weights_applied") and bool values.
         used_session_context_ids: Optional list of session-context entry ids served to this answer.
+        node_set: Optional list of NodeSet tag names carried with this entry and applied to the
+            per-note document when the session is promoted into the knowledge graph.
     """
 
     time: str
@@ -43,6 +45,7 @@ class SessionQAEntry(BaseModel):
     used_graph_element_ids: Optional[Dict[str, List[str]]] = None
     memify_metadata: Optional[Dict[str, bool]] = None
     used_session_context_ids: Optional[List[str]] = None
+    node_set: Optional[List[str]] = None
 
     @field_validator("used_graph_element_ids")
     @classmethod
@@ -69,6 +72,14 @@ class SessionQAEntry(BaseModel):
         if v is None:
             return None
         validated = _validate_list_of_str(v, "used_session_context_ids")
+        return validated if validated else None
+
+    @field_validator("node_set")
+    @classmethod
+    def validate_node_set(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return None
+        validated = _validate_list_of_str(v, "node_set")
         return validated if validated else None
 
     @field_validator("feedback_score")

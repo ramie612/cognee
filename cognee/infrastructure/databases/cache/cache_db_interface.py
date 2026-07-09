@@ -55,6 +55,7 @@ class CacheDBInterface(ABC):
         question: str,
         context: str,
         answer: str,
+        node_set: list | None = None,
     ):
         """Backward-compatibility: delegates to create_qa_entry with generated qa_id. :TODO: delete when retrievers are updated"""
         return await self.create_qa_entry(
@@ -64,6 +65,7 @@ class CacheDBInterface(ABC):
             context,
             answer,
             qa_id=str(uuid.uuid4()),
+            node_set=node_set,
         )
 
     @abstractmethod
@@ -80,6 +82,7 @@ class CacheDBInterface(ABC):
         used_graph_element_ids: dict | None = None,
         memify_metadata: dict | None = None,
         used_session_context_ids: list | None = None,
+        node_set: list | None = None,
     ) -> None:
         """
         Add a Q/A/context triplet to a cache session.
@@ -87,6 +90,7 @@ class CacheDBInterface(ABC):
         used_graph_element_ids: Optional dict with keys "node_ids" and "edge_ids" (lists of str).
         memify_metadata: Optional dict with status keys (e.g. "feedback_weights_applied") and bool values.
         used_session_context_ids: Optional list of session-context entry ids served to this answer.
+        node_set: Optional list of NodeSet tag names carried with this entry for graph promotion.
         """
         pass
 
@@ -143,6 +147,7 @@ class CacheDBInterface(ABC):
         used_graph_element_ids: dict | None = None,
         memify_metadata: dict | None = None,
         used_session_context_ids: list | None = None,
+        node_set: list | None = None,
     ) -> bool:
         """
         Update a QA entry by qa_id. Same QA fields as create_qa_entry.

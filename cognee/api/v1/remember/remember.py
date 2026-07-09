@@ -351,6 +351,7 @@ async def _dispatch_session_entry(
             feedback_text=entry.feedback_text,
             feedback_score=entry.feedback_score,
             used_graph_element_ids=entry.used_graph_element_ids,
+            node_set=entry.node_set,
         )
         result.entry_id = qa_id
         if qa_id is None:

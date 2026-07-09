@@ -280,6 +280,7 @@ class SqlCacheAdapter(CacheDBInterface):
         used_graph_element_ids: Optional[dict] = None,
         memify_metadata: Optional[dict] = None,
         used_session_context_ids: Optional[list] = None,
+        node_set: Optional[list] = None,
     ) -> dict:
         """Serialize one QA entry into the normalized cache payload shape."""
         entry = SessionQAEntry(
@@ -293,6 +294,7 @@ class SqlCacheAdapter(CacheDBInterface):
             used_graph_element_ids=used_graph_element_ids,
             memify_metadata=memify_metadata,
             used_session_context_ids=used_session_context_ids,
+            node_set=node_set,
         )
         return entry.model_dump()
 
@@ -333,6 +335,7 @@ class SqlCacheAdapter(CacheDBInterface):
         used_graph_element_ids: Optional[dict] = None,
         memify_metadata: Optional[dict] = None,
         used_session_context_ids: Optional[list] = None,
+        node_set: Optional[list] = None,
     ) -> dict:
         """Merge partial QA updates into an existing payload; None preserves values."""
         merged = {**entry}
@@ -350,6 +353,10 @@ class SqlCacheAdapter(CacheDBInterface):
             merged["used_graph_element_ids"] = used_graph_element_ids
         if used_session_context_ids is not None:
             merged["used_session_context_ids"] = used_session_context_ids
+        # node_set is preserved by {**entry}; the explicit pass-through lets a partial
+        # update set/replace it and locks it against the graph->session sync-back.
+        if node_set is not None:
+            merged["node_set"] = node_set
         if memify_metadata is not None:
             existing_metadata = merged.get("memify_metadata")
             if isinstance(existing_metadata, dict):
@@ -455,6 +462,7 @@ class SqlCacheAdapter(CacheDBInterface):
         used_graph_element_ids: Optional[dict] = None,
         memify_metadata: Optional[dict] = None,
         used_session_context_ids: Optional[list] = None,
+        node_set: Optional[list] = None,
     ) -> None:
         """Append one QA entry to the session. Creates the session if it doesn't exist."""
         await self._ensure_initialized()
@@ -469,6 +477,7 @@ class SqlCacheAdapter(CacheDBInterface):
                 used_graph_element_ids=used_graph_element_ids,
                 memify_metadata=memify_metadata,
                 used_session_context_ids=used_session_context_ids,
+                node_set=node_set,
             )
             async with self.sessionmaker() as session, session.begin():
                 await self._purge_session_expired(session, cache_qa_entries, user_id, session_id)
@@ -609,6 +618,7 @@ class SqlCacheAdapter(CacheDBInterface):
         used_graph_element_ids: Optional[dict] = None,
         memify_metadata: Optional[dict] = None,
         used_session_context_ids: Optional[list] = None,
+        node_set: Optional[list] = None,
     ) -> bool:
         """
         Update a QA entry by qa_id. Same QA fields as create_qa_entry.
@@ -631,6 +641,7 @@ class SqlCacheAdapter(CacheDBInterface):
                     used_graph_element_ids=used_graph_element_ids,
                     memify_metadata=memify_metadata,
                     used_session_context_ids=used_session_context_ids,
+                    node_set=node_set,
                 ),
             )
         except SessionQAEntryValidationError:

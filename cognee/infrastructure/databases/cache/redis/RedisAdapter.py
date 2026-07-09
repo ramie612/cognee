@@ -110,6 +110,7 @@ class RedisAdapter(CacheDBInterface):
         used_graph_element_ids: dict | None = None,
         memify_metadata: dict | None = None,
         used_session_context_ids: list | None = None,
+        node_set: list | None = None,
     ) -> dict:
         """Serialize one QA entry into the normalized Redis payload shape."""
         entry = SessionQAEntry(
@@ -123,6 +124,7 @@ class RedisAdapter(CacheDBInterface):
             used_graph_element_ids=used_graph_element_ids,
             memify_metadata=memify_metadata,
             used_session_context_ids=used_session_context_ids,
+            node_set=node_set,
         )
         return entry.model_dump()
 
@@ -183,6 +185,7 @@ class RedisAdapter(CacheDBInterface):
         used_graph_element_ids: dict | None = None,
         memify_metadata: dict | None = None,
         used_session_context_ids: list | None = None,
+        node_set: list | None = None,
     ) -> dict:
         """Merge partial QA updates into an existing serialized entry."""
         merged = {**entry}
@@ -200,6 +203,10 @@ class RedisAdapter(CacheDBInterface):
             merged["used_graph_element_ids"] = used_graph_element_ids
         if used_session_context_ids is not None:
             merged["used_session_context_ids"] = used_session_context_ids
+        # node_set is preserved by {**entry}; the explicit pass-through lets a partial
+        # update set/replace it and locks it against the graph->session sync-back.
+        if node_set is not None:
+            merged["node_set"] = node_set
         if memify_metadata is not None:
             existing_metadata = merged.get("memify_metadata")
             if isinstance(existing_metadata, dict):
@@ -287,6 +294,7 @@ class RedisAdapter(CacheDBInterface):
         used_graph_element_ids: dict | None = None,
         memify_metadata: dict | None = None,
         used_session_context_ids: list | None = None,
+        node_set: list | None = None,
     ) -> None:
         """
         Add a Q/A/context triplet to a Redis list for this session.
@@ -304,6 +312,7 @@ class RedisAdapter(CacheDBInterface):
                 used_graph_element_ids=used_graph_element_ids,
                 memify_metadata=memify_metadata,
                 used_session_context_ids=used_session_context_ids,
+                node_set=node_set,
             )
             await self.async_redis.rpush(session_key, json.dumps(qa_entry))
             await self._apply_session_ttl(session_key)
@@ -367,6 +376,7 @@ class RedisAdapter(CacheDBInterface):
         used_graph_element_ids: dict | None = None,
         memify_metadata: dict | None = None,
         used_session_context_ids: list | None = None,
+        node_set: list | None = None,
     ) -> bool:
         """
         Update a QA entry by qa_id. Same QA fields as create_qa_entry.
@@ -389,6 +399,7 @@ class RedisAdapter(CacheDBInterface):
                 used_graph_element_ids=used_graph_element_ids,
                 memify_metadata=memify_metadata,
                 used_session_context_ids=used_session_context_ids,
+                node_set=node_set,
             )
             entries[idx] = self._validate_entry_dict(merged)
             await self._write_entry_at(session_key, idx, entries[idx])

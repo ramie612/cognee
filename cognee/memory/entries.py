@@ -31,6 +31,13 @@ class QAEntry(BaseModel):
     feedback_text: Optional[str] = None
     feedback_score: Optional[int] = None
     used_graph_element_ids: Optional[dict] = None
+    node_set: Optional[list[str]] = Field(
+        default=None,
+        description=(
+            "Optional NodeSet tag names carried into the session cache and applied to this "
+            "entry's document when the session is promoted to the knowledge graph."
+        ),
+    )
 
 
 class TraceEntry(BaseModel):
