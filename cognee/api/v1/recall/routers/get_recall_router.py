@@ -93,6 +93,19 @@ class RecallPayloadDTO(InDTO):
             "'agent' (tool/workflow). Ignored by other scopes."
         ),
     )
+    include_global_context_index: bool = Field(
+        default=False,
+        description=(
+            "When true, prepend the global context index prelude (root 'world summary' "
+            "plus the top matching area summaries) to the retrieval context. Meant for "
+            "broad/overview/whole-corpus questions; leave false for specific lookups. "
+            "Applies to the GRAPH_COMPLETION and HYBRID_COMPLETION search types."
+        ),
+    )
+    global_context_index_top_k: int = Field(
+        default=3,
+        description="How many area summaries to include when include_global_context_index is true.",
+    )
 
 
 def get_recall_router() -> APIRouter:
@@ -174,6 +187,15 @@ def get_recall_router() -> APIRouter:
 
         from cognee.api.v1.recall import recall as cognee_recall
 
+        # Opt-in global context index prelude: only build the retriever_specific_config
+        # when the caller asks for it, so default recalls are byte-identical to before.
+        retriever_specific_config = None
+        if payload.include_global_context_index:
+            retriever_specific_config = {
+                "include_global_context_index": True,
+                "global_context_index_top_k": payload.global_context_index_top_k,
+            }
+
         try:
             results = await cognee_recall(
                 query_text=payload.query,
@@ -190,6 +212,7 @@ def get_recall_router() -> APIRouter:
                 scope=payload.scope,
                 context_profile=payload.context_profile,
                 include_references=payload.include_references,
+                retriever_specific_config=retriever_specific_config,
             )
             return jsonable_encoder(results)
         except (DatabaseNotCreatedError, UserNotFoundError, CogneeValidationError) as e:
