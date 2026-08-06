@@ -330,13 +330,19 @@ async def _bridge_sessions(
     # Stage 1: apply feedback weights from session retrieval traces
     from cognee.memify_pipelines.apply_feedback_weights import apply_feedback_weights_pipeline
 
-    dataset_name = await _resolve_dataset_name(dataset, user)
-
+    # Pass the caller's ORIGINAL dataset reference downstream, never a name resolved
+    # from it. Every one of these pipelines re-resolves what it is handed through
+    # get_authorized_existing_datasets(), and that helper resolves a NAME only against
+    # datasets the user OWNS (get_dataset_ids -> get_datasets(user.id)). Collapsing a
+    # UUID to a name therefore discards the caller's write GRANT: a user promoting into
+    # a shared dataset they do not own fails the write check and the session Q&A is
+    # silently dropped (these stages are all non-fatal). A UUID survives the round trip
+    # because get_dataset_ids passes UUIDs through to the permission check.
     try:
         await apply_feedback_weights_pipeline(
             user=user,
             session_ids=session_ids,
-            dataset=dataset_name,
+            dataset=dataset,
             alpha=feedback_alpha,
             run_in_background=run_in_background,
         )
@@ -353,7 +359,7 @@ async def _bridge_sessions(
         await persist_sessions_in_knowledge_graph_pipeline(
             user=user,
             session_ids=session_ids,
-            dataset=dataset_name,
+            dataset=dataset,
             run_in_background=run_in_background,
         )
         logger.info("improve: session Q&A persisted from %d session(s)", len(session_ids))
@@ -461,17 +467,16 @@ async def _persist_session_traces(
     that extracts per-step ``session_feedback`` from the cache and
     cognifies it into the ``agent_trace_feedbacks`` node-set.
     """
-    dataset_name = await _resolve_dataset_name(dataset, user)
-
     try:
         from cognee.memify_pipelines.persist_agent_trace_feedbacks_in_knowledge_graph import (
             persist_agent_trace_feedbacks_in_knowledge_graph_pipeline,
         )
 
+        # Original reference, not a resolved name (see _bridge_sessions).
         await persist_agent_trace_feedbacks_in_knowledge_graph_pipeline(
             user=user,
             session_ids=session_ids,
-            dataset=dataset_name,
+            dataset=dataset,
             node_set_name="agent_trace_feedbacks",
             raw_trace_content=False,
             last_n_steps=None,  # persist all stored steps on demand

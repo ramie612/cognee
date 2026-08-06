@@ -1,4 +1,5 @@
-from typing import List
+from typing import Union, List
+from uuid import UUID
 
 from cognee import memify
 from cognee.context_global_variables import (
@@ -19,7 +20,7 @@ logger = get_logger("apply_feedback_weights_pipeline")
 async def apply_feedback_weights_pipeline(
     user: User,
     session_ids: List[str],
-    dataset: str = "main_dataset",
+    dataset: Union[str, UUID] = "main_dataset",
     alpha: float = 0.1,
     batch_size: int = 100,
     run_in_background: bool = False,
