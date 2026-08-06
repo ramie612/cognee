@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Union, Optional
+from uuid import UUID
 
 from cognee import memify
 from cognee.context_global_variables import (
@@ -21,7 +22,7 @@ logger = get_logger("persist_agent_trace_feedbacks_in_knowledge_graph")
 async def persist_agent_trace_feedbacks_in_knowledge_graph_pipeline(
     user: User,
     session_ids: Optional[list[str]] = None,
-    dataset: str = "main_dataset",
+    dataset: Union[str, UUID] = "main_dataset",
     node_set_name: str = "agent_trace_feedbacks",
     raw_trace_content: bool = False,
     last_n_steps: Optional[int] = None,
@@ -38,7 +39,10 @@ async def persist_agent_trace_feedbacks_in_knowledge_graph_pipeline(
         user: Authenticated user with write access to the dataset.
         session_ids: Optional list of session IDs to persist. If None, no sessions
             are extracted (caller must specify which sessions to persist).
-        dataset: Dataset name for write access. Defaults to "main_dataset".
+        dataset: Dataset name or UUID to write to. A UUID is REQUIRED when the
+            caller is not the dataset owner: a name resolves only against
+            datasets the user owns, so a name would discard a write grant.
+            Defaults to "main_dataset".
         node_set_name: Node-set name used when adding the persisted feedback.
         raw_trace_content: When True, persist raw ``method_return_value`` values instead
             of ``session_feedback`` summaries.
