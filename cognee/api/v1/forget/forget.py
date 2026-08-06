@@ -144,7 +144,17 @@ async def forget(
                 raise ValueError("data_id requires dataset or dataset_id.")
             raise ValueError("Specify dataset, dataset_id, data_id+dataset, or everything=True.")
 
-        async with set_database_global_context_variables(dataset_ref, user.id):
+        # The per-dataset database is registered under the dataset's OWNER, so every
+        # context entered for it must pass the owner's id and not the caller's. Passing
+        # the caller's made a non-owner's forget try to insert a SECOND dataset_database
+        # row for the same dataset, which fails that table's primary key: anyone deleting
+        # from a dataset they did not own got an opaque 500 ("An error occurred during
+        # deletion") even while holding a valid `delete` grant. Permission is still
+        # checked against the CALLER, in _resolve_dataset_owner here and again inside the
+        # delete helpers, so this widens no access; it only stops addressing the right
+        # database under the wrong key.
+        owner_id = await _resolve_dataset_owner(dataset_ref, user)
+        async with set_database_global_context_variables(dataset_ref, owner_id):
             if memory_only:
                 if data_id is not None:
                     return await _forget_data_memory(data_id, dataset_ref, user)
@@ -365,6 +375,27 @@ async def _forget_data_memory(data_id: UUID, dataset_ref: Union[str, UUID], user
         "dataset_id": str(dataset_id),
         "status": "success",
     }
+
+
+async def _resolve_dataset_owner(dataset_ref: Union[str, UUID], user: Any) -> UUID:
+    """Resolve a dataset reference to its OWNER's id, under the same delete-permission
+    check as _resolve_dataset_id (which is applied to the CALLER, not the owner).
+
+    Used for the per-dataset database context: that database is keyed by the owner, so
+    a caller who merely holds a `delete` grant must still enter it under the owner's id.
+    """
+    if isinstance(dataset_ref, UUID):
+        from cognee.modules.data.methods.get_authorized_dataset import get_authorized_dataset
+
+        dataset = await get_authorized_dataset(user, dataset_ref, "delete")
+        if not dataset:
+            raise ValueError(f"Dataset {dataset_ref} not found or not accessible.")
+        return dataset.owner_id
+
+    from cognee.modules.data.methods import get_authorized_dataset_by_name
+
+    dataset = await get_authorized_dataset_by_name(dataset_ref, user, "delete")
+    return dataset.owner_id
 
 
 async def _resolve_dataset_id(dataset_ref: Union[str, UUID], user: Any) -> UUID:
