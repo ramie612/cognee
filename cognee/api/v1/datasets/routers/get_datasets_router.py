@@ -519,7 +519,6 @@ def get_datasets_router() -> APIRouter:
             },
         )
 
-        from cognee.modules.data.methods import get_data
         from cognee.modules.data.methods import get_dataset_data
 
         # Verify user has permission to read dataset
@@ -543,12 +542,16 @@ def get_datasets_router() -> APIRouter:
                 message=f"Data ({data_id}) not found in dataset ({dataset_id})."
             )
 
-        data = await get_data(user.id, data_id)
-
-        if data is None:
-            raise DataNotFoundError(
-                message=f"Data ({data_id}) not found in dataset ({dataset_id})."
-            )
+        # Authorize by DATASET permission, which was already established above, not by
+        # who authored the item. get_data(user.id, ...) re-scopes to the caller as the
+        # data record's OWNER and raises UnauthorizedDataAccessError otherwise, so in a
+        # SHARED dataset only an item's author could read it back: every teammate, and
+        # even the dataset's own owner, got a 401 on someone else's item. That protected
+        # nothing (/recall already returns the same content to anyone holding dataset
+        # read) while making browsing inconsistent with retrieval. The two checks that
+        # matter have both already run: read permission on the dataset, and the item
+        # actually belonging to it.
+        data = matching_data[0]
 
         raw_location = data.raw_data_location
         parsed_uri = urlparse(raw_location)
